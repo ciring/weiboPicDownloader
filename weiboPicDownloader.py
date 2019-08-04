@@ -69,6 +69,10 @@ parser.add_argument(
     help = 'focus on weibos in the id range'
 )
 parser.add_argument(
+    '-R', metavar = 'resource', dest = 'resource',
+    help = 'use dumped resource'
+)
+parser.add_argument(
     '-n', metavar = 'name', dest = 'name', default = '{name}',
     help = 'customize naming format'
 )
@@ -246,7 +250,16 @@ def get_resources(uid, video, interval, limit):
             time.sleep(interval)
 
     print_fit('\npractically scan {} weibos, get {} {}'.format(amount, len(resources), 'resources' if video else 'pictures'))
+    with open(f"{uid}.json", "w", encoding='utf-8') as f1:
+        json.dump(resources, f1, indent=2, default=json_serial)
     return resources
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, (datetime.date)):
+        return obj.isoformat()
+    raise TypeError ("Type %s not serializable" % type(obj))
 
 def format_name(item):
     item['name'] = re.sub(r'\?\S+$', '', re.sub(r'^\S+/', '', item['url']))
@@ -260,13 +273,14 @@ def format_name(item):
         elif key[0] == 'index':
             return str(item[key[0]]).zfill(int(key[1] if len(key) > 1 else '0'))
         elif key[0] == 'text':
-            return re.sub("<.*?>", "", item[key[0]]).strip()
+            return re.sub("<.*?>", "", item[key[0]]).strip()[:100]
         else:
             return str(item[key[0]])
 
     name = re.sub(r'{(.*?)}', substitute, args.name)
     for c in R'<>:"\/|?*':  # Windows-safe filename
         name = name.replace(c, '_')
+    print(name)
     return name
 
 def download(url, path, overwrite):
@@ -335,12 +349,17 @@ for number, user in enumerate(users, 1):
         continue
 
     print_fit('{} {}'.format(nickname, uid))
-    
-    try:
-        resources = get_resources(uid, args.video, args.interval, boundary)
-    except KeyboardInterrupt:
-        quit()
 
+    if args.resource:
+        with open(args.resource, 'r', encoding='utf-8') as f:
+            resources = json.load(f)
+    else:
+        try:
+            resources = get_resources(uid, args.video, args.interval, boundary)
+        except KeyboardInterrupt:
+            quit()
+
+    # quit()
     album = os.path.join(base, nickname)
     if resources and not os.path.exists(album): make_dir(album)
 
