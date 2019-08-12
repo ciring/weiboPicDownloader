@@ -2,7 +2,7 @@
 
 from functools import reduce
 import sys, locale, platform
-import time, os, json, re, datetime, math
+import time, os, json, re, datetime, math, operator
 import concurrent.futures
 import requests
 import argparse
@@ -17,7 +17,7 @@ is_python2 = sys.version[0] == '2'
 system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
 
 if platform.system() == 'Windows':
-    if platform.version() >= '10.0.14393':
+    if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
         os.system('')
     else:
         import colorama
@@ -102,7 +102,7 @@ def nargs_fit(parser, args):
             elif valid:
                 greedy = False
             elif greedy:
-                args[index] += ' '
+                args[index] = ' ' + args[index]
     return args
 
 def print_fit(string, pin = False):
@@ -264,6 +264,12 @@ def json_serial(obj):
 def format_name(item):
     item['name'] = re.sub(r'\?\S+$', '', re.sub(r'^\S+/', '', item['url']))
 
+    def safeify(name):
+        template = {u'\\': u'＼', u'/': u'／', u':': u'：', u'*': u'＊', u'?': u'？', u'"': u'＂', u'<': u'＜', u'>': u'＞', u'|': u'｜'}
+        for illegal in template:
+            name = name.replace(illegal, template[illegal])
+        return name
+
     def substitute(matched):
         key = matched.group(1).split(':')
         if key[0] not in item:
@@ -273,6 +279,7 @@ def format_name(item):
         elif key[0] == 'index':
             return str(item[key[0]]).zfill(int(key[1] if len(key) > 1 else '0'))
         elif key[0] == 'text':
+<<<<<<< HEAD
             return re.sub("<.*?>", "", item[key[0]]).strip()[:100]
         else:
             return str(item[key[0]])
@@ -282,6 +289,13 @@ def format_name(item):
         name = name.replace(c, '_')
     print(name)
     return name
+=======
+            return re.sub(r'<.*?>', '', item[key[0]]).strip()
+        else:
+            return str(item[key[0]])
+
+    return safeify(re.sub(r'{(.*?)}', substitute, args.name))
+>>>>>>> upstream/dev
 
 def download(url, path, overwrite):
     if os.path.exists(path) and not overwrite: return True
