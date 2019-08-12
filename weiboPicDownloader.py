@@ -279,23 +279,11 @@ def format_name(item):
         elif key[0] == 'index':
             return str(item[key[0]]).zfill(int(key[1] if len(key) > 1 else '0'))
         elif key[0] == 'text':
-<<<<<<< HEAD
-            return re.sub("<.*?>", "", item[key[0]]).strip()[:100]
-        else:
-            return str(item[key[0]])
-
-    name = re.sub(r'{(.*?)}', substitute, args.name)
-    for c in R'<>:"\/|?*':  # Windows-safe filename
-        name = name.replace(c, '_')
-    print(name)
-    return name
-=======
             return re.sub(r'<.*?>', '', item[key[0]]).strip()
         else:
             return str(item[key[0]])
 
     return safeify(re.sub(r'{(.*?)}', substitute, args.name))
->>>>>>> upstream/dev
 
 def download(url, path, overwrite):
     if os.path.exists(path) and not overwrite: return True
