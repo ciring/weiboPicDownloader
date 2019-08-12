@@ -279,10 +279,10 @@ def format_name(item):
         elif key[0] == 'index':
             return str(item[key[0]]).zfill(int(key[1] if len(key) > 1 else '0'))
         elif key[0] == 'text':
-            return re.sub(r'<.*?>', '', item[key[0]]).strip()
+            return re.sub(r'<.*?>', '', item[key[0]]).strip()[:100]
         else:
             return str(item[key[0]])
-
+  
     return safeify(re.sub(r'{(.*?)}', substitute, args.name))
 
 def download(url, path, overwrite):
