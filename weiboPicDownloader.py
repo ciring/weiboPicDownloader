@@ -232,7 +232,8 @@ def get_resources(uid, video, interval, limit):
                     mid = int(mblog['mid'])
                     mark = {'mid': mid, 'bid': mblog['bid'], 'date': parse_date(mblog['created_at']), 'text': mblog['text']}
                     amount += 1
-                    if mid < limit[0]: exceed = True
+                    if mid < limit[0] and not ('isTop' in mblog.keys() and mblog['isTop']):
+                        exceed = True
                     if mid < limit[0] or mid > limit[1]: continue
                     if 'pics' in mblog:
                         for index, pic in enumerate(mblog['pics'], 1):
@@ -250,7 +251,7 @@ def get_resources(uid, video, interval, limit):
             time.sleep(interval)
 
     print_fit('\npractically scan {} weibos, get {} {}'.format(amount, len(resources), 'resources' if video else 'pictures'))
-    with open(f"{uid}.json", "w", encoding='utf-8') as f1:
+    with open(f"json_backup/{uid}.json", "w", encoding='utf-8') as f1:
         json.dump(resources, f1, indent=2, default=json_serial)
     return resources
 

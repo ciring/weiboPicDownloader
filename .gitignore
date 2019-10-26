@@ -100,9 +100,9 @@ ENV/
 # mypy
 .mypy_cache/
 /.vscode
-/3165365577.json
-/3165365577_bkup.json
 /test.py
 /run.bat
 /weiboPic
 id.txt
+/json_backup
+/download_progress.txt
