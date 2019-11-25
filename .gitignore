@@ -106,3 +106,4 @@ ENV/
 id.txt
 /json_backup
 /download_progress.txt
+/record.json
