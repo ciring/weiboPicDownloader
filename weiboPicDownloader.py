@@ -7,84 +7,6 @@ import concurrent.futures
 import requests
 import argparse
 
-try:
-    reload(sys)
-    sys.setdefaultencoding('utf8')
-except:
-    pass
-
-is_python2 = sys.version[0] == '2'
-system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
-
-if platform.system() == 'Windows':
-    if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
-        os.system('')
-    else:
-        import colorama
-        colorama.init()
-
-try:
-    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-except:
-    pass
-
-parser = argparse.ArgumentParser(
-    prog = 'weiboPicDownloader'
-)
-group = parser.add_mutually_exclusive_group(required = True)
-group.add_argument(
-    '-u', metavar = 'user', dest = 'users', nargs = '+',
-    help = 'specify nickname or id of weibo users'
-)
-group.add_argument(
-    '-f', metavar = 'file', dest = 'files', nargs = '+',
-    help = 'import list of users from files'
-)
-parser.add_argument(
-    '-d', metavar = 'directory', dest = 'directory',
-    help = 'set picture saving path'
-)
-parser.add_argument(
-    '-s', metavar = 'size', dest = 'size',
-    default = 20, type = int,
-    help = 'set size of thread pool'
-)
-parser.add_argument(
-    '-r', metavar = 'retry', dest = 'retry',
-    default = 2, type = int,
-    help = 'set maximum number of retries'
-)
-parser.add_argument(
-    '-i', metavar = 'interval', dest = 'interval',
-    default = 1, type = float,
-    help = 'set interval for feed requests'
-)
-parser.add_argument(
-    '-c', metavar = 'cookie', dest = 'cookie',
-    help = 'set cookie if needed'
-)
-parser.add_argument(
-    '-b', metavar = 'boundary', dest = 'boundary',
-    default = ':',
-    help = 'focus on weibos in the id range'
-)
-parser.add_argument(
-    '-R', metavar = 'resource', dest = 'resource',
-    help = 'use dumped resource'
-)
-parser.add_argument(
-    '-n', metavar = 'name', dest = 'name', default = '{name}',
-    help = 'customize naming format'
-)
-parser.add_argument(
-    '-v', dest = 'video', action = 'store_true',
-    help = 'download videos together'
-)
-parser.add_argument(
-    '-o', dest = 'overwrite', action = 'store_true',
-    help = 'overwrite existing files'
-)
-
 def nargs_fit(parser, args):
     flags = parser._option_string_actions
     short_flags = [flag for flag in flags.keys() if len(flag) == 2]
@@ -251,8 +173,8 @@ def get_resources(uid, video, interval, limit):
             time.sleep(interval)
 
     print_fit('\npractically scan {} weibos, get {} {}'.format(amount, len(resources), 'resources' if video else 'pictures'))
-    with open(f"json_backup/{uid}.json", "w", encoding='utf-8') as f1:
-        json.dump(resources, f1, indent=2, default=json_serial)
+    # with open(f"json_backup/{uid}.json", "w", encoding='utf-8') as f1:
+    #     json.dump(resources, f1, indent=2, default=json_serial)
     return resources
 
 def json_serial(obj):
@@ -301,115 +223,199 @@ def download(url, path, overwrite):
         return True
 
 
-args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
 
-if args.users:
-    users = [user.decode(system_encoding) for user in args.users] if is_python2 else args.users
-elif args.files:
-    users = [read_from_file(path.strip()) for path in args.files]
-    users = reduce(lambda x, y : x + y, users)
-users = [user.strip() for user in users]
 
-if args.directory:
-    base = args.directory
-    if os.path.exists(base):
-        if not os.path.isdir(base): quit('saving path is not a directory')
-    elif confirm('directory "{}" doesn\'t exist, help to create?'.format(base)):
-        make_dir(base)
+def main():
+    args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
+
+    if args.users:
+        users = [user.decode(system_encoding) for user in args.users] if is_python2 else args.users
+    elif args.files:
+        users = [read_from_file(path.strip()) for path in args.files]
+        users = reduce(lambda x, y : x + y, users)
+    users = [user.strip() for user in users]
+
+    if args.directory:
+        base = args.directory
+        if os.path.exists(base):
+            if not os.path.isdir(base): quit('saving path is not a directory')
+        elif confirm('directory "{}" doesn\'t exist, help to create?'.format(base)):
+            make_dir(base)
+        else:
+            quit('do it youself :)')
     else:
-        quit('do it youself :)')
-else:
-    base = os.path.join(os.path.dirname(__file__), 'weiboPic')
-    if not os.path.exists(base): make_dir(base)
+        base = os.path.join(os.path.dirname(__file__), 'weiboPic')
+        if not os.path.exists(base): make_dir(base)
 
-boundary = args.boundary.split(':')
-boundary = boundary * 2 if len(boundary) == 1 else boundary
-numberify = lambda x: int(x) if re.search(r'^\d+$', x) else bid_to_mid(x)
-try:
-    boundary[0] = 0 if boundary[0] == '' else numberify(boundary[0])
-    boundary[1] = float('inf') if boundary[1] == '' else numberify(boundary[1])
-    assert boundary[0] <= boundary[1]
-except:
-    quit('invalid id range {}'.format(args.boundary))
+    boundary = args.boundary.split(':')
+    boundary = boundary * 2 if len(boundary) == 1 else boundary
+    numberify = lambda x: int(x) if re.search(r'^\d+$', x) else bid_to_mid(x)
+    try:
+        boundary[0] = 0 if boundary[0] == '' else numberify(boundary[0])
+        boundary[1] = float('inf') if boundary[1] == '' else numberify(boundary[1])
+        assert boundary[0] <= boundary[1]
+    except:
+        quit('invalid id range {}'.format(args.boundary))
 
-token = 'SUB={}'.format(args.cookie) if args.cookie else None
-pool = concurrent.futures.ThreadPoolExecutor(max_workers = args.size)
+    token = 'SUB={}'.format(args.cookie) if args.cookie else None
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers = args.size)
 
-for number, user in enumerate(users, 1):
-    
-    print_fit('{}/{} {}'.format(number, len(users), time.ctime()))
-    
-    if re.search(r'^\d{10}$', user):
-        nickname = uid_to_nickname(user)
-        uid = user
-    else:
-        nickname = user
-        uid = nickname_to_uid(user)
-
-    if not nickname or not uid:
-        print_fit('invalid account {}'.format(user))
-        print_fit('-' * 30)
-        continue
-
-    print_fit('{} {}'.format(nickname, uid))
-
-    if args.resource:
-        with open(args.resource, 'r', encoding='utf-8') as f:
-            resources = json.load(f)
-    else:
-        try:
-            resources = get_resources(uid, args.video, args.interval, boundary)
-        except KeyboardInterrupt:
-            quit()
-
-    # quit()
-    album = os.path.join(base, nickname)
-    if resources and not os.path.exists(album): make_dir(album)
-
-    retry = 0
-    while resources and retry <= args.retry:
+    for number, user in enumerate(users, 1):
         
-        if retry > 0: print_fit('automatic retry {}'.format(retry))
+        print_fit('{}/{} {}'.format(number, len(users), time.ctime()))
+        
+        if re.search(r'^\d{10}$', user):
+            nickname = uid_to_nickname(user)
+            uid = user
+        else:
+            nickname = user
+            uid = nickname_to_uid(user)
 
-        total = len(resources)
-        tasks = []
-        done = 0
-        failed = {}
-        cancel = False
+        if not nickname or not uid:
+            print_fit('invalid account {}'.format(user))
+            print_fit('-' * 30)
+            continue
 
-        for resource in resources:
-            path = os.path.join(album, format_name(resource))
-            tasks.append(pool.submit(download, resource['url'], path, args.overwrite))
+        print_fit('{} {}'.format(nickname, uid))
 
-        while done != total:
+        if args.resource:
+            with open(args.resource, 'r', encoding='utf-8') as f:
+                resources = json.load(f)
+        else:
             try:
-                done = 0
-                for index, task in enumerate(tasks):
-                    if task.done() == True:
-                        done += 1
-                        if task.cancelled(): continue
-                        elif task.result() == False: failed[index] = ''
-                    elif cancel:
-                        if not task.cancelled(): task.cancel()
-                time.sleep(0.5)
+                resources = get_resources(uid, args.video, args.interval, boundary)
             except KeyboardInterrupt:
-                cancel = True
-            finally:
-                if not cancel:
-                    print_fit('{} {}'.format(
-                        'downloading...' if done != total else 'all tasks done',
-                        progress(done, total, True)
-                    ), pin = True)
-                else:
-                    print_fit('waiting for cancellation... ({})'.format(total - done), pin = True) 
+                quit()
 
-        if cancel: quit()
-        print_fit('\nsuccess {}, failure {}, total {}'.format(total - len(failed), len(failed), total))
+        # quit()
+        album = os.path.join(base, nickname)
+        if resources and not os.path.exists(album): make_dir(album)
 
-        resources = [resources[index] for index in failed]
-        retry += 1
+        retry = 0
+        while resources and retry <= args.retry:
+            
+            if retry > 0: print_fit('automatic retry {}'.format(retry))
 
-    for resource in resources: print_fit('{} failed'.format(resource['url']))
-    print_fit('-' * 30)
+            total = len(resources)
+            tasks = []
+            done = 0
+            failed = {}
+            cancel = False
 
-quit('bye bye')
+            for resource in resources:
+                path = os.path.join(album, format_name(resource))
+                tasks.append(pool.submit(download, resource['url'], path, args.overwrite))
+
+            while done != total:
+                try:
+                    done = 0
+                    for index, task in enumerate(tasks):
+                        if task.done() == True:
+                            done += 1
+                            if task.cancelled(): continue
+                            elif task.result() == False: failed[index] = ''
+                        elif cancel:
+                            if not task.cancelled(): task.cancel()
+                    time.sleep(0.5)
+                except KeyboardInterrupt:
+                    cancel = True
+                finally:
+                    if not cancel:
+                        print_fit('{} {}'.format(
+                            'downloading...' if done != total else 'all tasks done',
+                            progress(done, total, True)
+                        ), pin = True)
+                    else:
+                        print_fit('waiting for cancellation... ({})'.format(total - done), pin = True) 
+
+            if cancel: quit()
+            print_fit('\nsuccess {}, failure {}, total {}'.format(total - len(failed), len(failed), total))
+
+            resources = [resources[index] for index in failed]
+            retry += 1
+
+        for resource in resources: print_fit('{} failed'.format(resource['url']))
+        print_fit('-' * 30)
+
+    quit('bye bye')
+
+
+if __name__ == "__main__":
+    try:
+        reload(sys)
+        sys.setdefaultencoding('utf8')
+    except:
+        pass
+
+    is_python2 = sys.version[0] == '2'
+    system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
+
+    if platform.system() == 'Windows':
+        if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
+            os.system('')
+        else:
+            import colorama
+            colorama.init()
+
+    try:
+        requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+    except:
+        pass
+
+    parser = argparse.ArgumentParser(
+        prog = 'weiboPicDownloader'
+    )
+    group = parser.add_mutually_exclusive_group(required = True)
+    group.add_argument(
+        '-u', metavar = 'user', dest = 'users', nargs = '+',
+        help = 'specify nickname or id of weibo users'
+    )
+    group.add_argument(
+        '-f', metavar = 'file', dest = 'files', nargs = '+',
+        help = 'import list of users from files'
+    )
+    parser.add_argument(
+        '-d', metavar = 'directory', dest = 'directory',
+        help = 'set picture saving path'
+    )
+    parser.add_argument(
+        '-s', metavar = 'size', dest = 'size',
+        default = 20, type = int,
+        help = 'set size of thread pool'
+    )
+    parser.add_argument(
+        '-r', metavar = 'retry', dest = 'retry',
+        default = 2, type = int,
+        help = 'set maximum number of retries'
+    )
+    parser.add_argument(
+        '-i', metavar = 'interval', dest = 'interval',
+        default = 1, type = float,
+        help = 'set interval for feed requests'
+    )
+    parser.add_argument(
+        '-c', metavar = 'cookie', dest = 'cookie',
+        help = 'set cookie if needed'
+    )
+    parser.add_argument(
+        '-b', metavar = 'boundary', dest = 'boundary',
+        default = ':',
+        help = 'focus on weibos in the id range'
+    )
+    parser.add_argument(
+        '-R', metavar = 'resource', dest = 'resource',
+        help = 'use dumped resource'
+    )
+    parser.add_argument(
+        '-n', metavar = 'name', dest = 'name', default = '{name}',
+        help = 'customize naming format'
+    )
+    parser.add_argument(
+        '-v', dest = 'video', action = 'store_true',
+        help = 'download videos together'
+    )
+    parser.add_argument(
+        '-o', dest = 'overwrite', action = 'store_true',
+        help = 'overwrite existing files'
+    )
+    main()
