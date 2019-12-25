@@ -7,6 +7,88 @@ import concurrent.futures
 import requests
 import argparse
 
+
+try:
+    reload(sys)
+    sys.setdefaultencoding('utf8')
+except:
+    pass
+
+is_python2 = sys.version[0] == '2'
+system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
+
+if platform.system() == 'Windows':
+    if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
+        os.system('')
+    else:
+        import colorama
+        colorama.init()
+
+try:
+    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+except:
+    pass
+
+token = None
+args = None
+
+parser = argparse.ArgumentParser(
+    prog = 'weiboPicDownloader'
+)
+group = parser.add_mutually_exclusive_group(required = True)
+group.add_argument(
+    '-u', metavar = 'user', dest = 'users', nargs = '+',
+    help = 'specify nickname or id of weibo users'
+)
+group.add_argument(
+    '-f', metavar = 'file', dest = 'files', nargs = '+',
+    help = 'import list of users from files'
+)
+parser.add_argument(
+    '-d', metavar = 'directory', dest = 'directory',
+    help = 'set picture saving path'
+)
+parser.add_argument(
+    '-s', metavar = 'size', dest = 'size',
+    default = 20, type = int,
+    help = 'set size of thread pool'
+)
+parser.add_argument(
+    '-r', metavar = 'retry', dest = 'retry',
+    default = 2, type = int,
+    help = 'set maximum number of retries'
+)
+parser.add_argument(
+    '-i', metavar = 'interval', dest = 'interval',
+    default = 1, type = float,
+    help = 'set interval for feed requests'
+)
+parser.add_argument(
+    '-c', metavar = 'cookie', dest = 'cookie',
+    help = 'set cookie if needed'
+)
+parser.add_argument(
+    '-b', metavar = 'boundary', dest = 'boundary',
+    default = ':',
+    help = 'focus on weibos in the id range'
+)
+parser.add_argument(
+    '-R', metavar = 'resource', dest = 'resource',
+    help = 'use dumped resource'
+)
+parser.add_argument(
+    '-n', metavar = 'name', dest = 'name', default = '{name}',
+    help = 'customize naming format'
+)
+parser.add_argument(
+    '-v', dest = 'video', action = 'store_true',
+    help = 'download videos together'
+)
+parser.add_argument(
+    '-o', dest = 'overwrite', action = 'store_true',
+    help = 'overwrite existing files'
+)
+
 def nargs_fit(parser, args):
     flags = parser._option_string_actions
     short_flags = [flag for flag in flags.keys() if len(flag) == 2]
@@ -184,7 +266,7 @@ def json_serial(obj):
         return obj.isoformat()
     raise TypeError ("Type %s not serializable" % type(obj))
 
-def format_name(item):
+def format_name(item, template):
     item['name'] = re.sub(r'\?\S+$', '', re.sub(r'^\S+/', '', item['url']))
 
     def safeify(name):
@@ -206,7 +288,7 @@ def format_name(item):
         else:
             return str(item[key[0]])
   
-    return safeify(re.sub(r'{(.*?)}', substitute, args.name))
+    return safeify(re.sub(r'{(.*?)}', substitute, template))
 
 def download(url, path, overwrite):
     if os.path.exists(path) and not overwrite: return True
@@ -223,11 +305,12 @@ def download(url, path, overwrite):
         return True
 
 
-
-
-def main():
-    args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
-
+def main(*paras):
+    if paras:
+        args = parser.parse_args(nargs_fit(parser, paras))
+    else:
+        args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
+        
     if args.users:
         users = [user.decode(system_encoding) for user in args.users] if is_python2 else args.users
     elif args.files:
@@ -260,6 +343,7 @@ def main():
     token = 'SUB={}'.format(args.cookie) if args.cookie else None
     pool = concurrent.futures.ThreadPoolExecutor(max_workers = args.size)
 
+    newest_bid = ''
     for number, user in enumerate(users, 1):
         
         print_fit('{}/{} {}'.format(number, len(users), time.ctime()))
@@ -290,7 +374,7 @@ def main():
         # quit()
         album = os.path.join(base, nickname)
         if resources and not os.path.exists(album): make_dir(album)
-
+        if resources: newest_bid = resources[0]['bid']
         retry = 0
         while resources and retry <= args.retry:
             
@@ -303,7 +387,7 @@ def main():
             cancel = False
 
             for resource in resources:
-                path = os.path.join(album, format_name(resource))
+                path = os.path.join(album, format_name(resource, args.name))
                 tasks.append(pool.submit(download, resource['url'], path, args.overwrite))
 
             while done != total:
@@ -336,86 +420,9 @@ def main():
 
         for resource in resources: print_fit('{} failed'.format(resource['url']))
         print_fit('-' * 30)
-
-    quit('bye bye')
+    print_fit('Done!')
+    return(nickname, newest_bid)
 
 
 if __name__ == "__main__":
-    try:
-        reload(sys)
-        sys.setdefaultencoding('utf8')
-    except:
-        pass
-
-    is_python2 = sys.version[0] == '2'
-    system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
-
-    if platform.system() == 'Windows':
-        if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
-            os.system('')
-        else:
-            import colorama
-            colorama.init()
-
-    try:
-        requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-    except:
-        pass
-
-    parser = argparse.ArgumentParser(
-        prog = 'weiboPicDownloader'
-    )
-    group = parser.add_mutually_exclusive_group(required = True)
-    group.add_argument(
-        '-u', metavar = 'user', dest = 'users', nargs = '+',
-        help = 'specify nickname or id of weibo users'
-    )
-    group.add_argument(
-        '-f', metavar = 'file', dest = 'files', nargs = '+',
-        help = 'import list of users from files'
-    )
-    parser.add_argument(
-        '-d', metavar = 'directory', dest = 'directory',
-        help = 'set picture saving path'
-    )
-    parser.add_argument(
-        '-s', metavar = 'size', dest = 'size',
-        default = 20, type = int,
-        help = 'set size of thread pool'
-    )
-    parser.add_argument(
-        '-r', metavar = 'retry', dest = 'retry',
-        default = 2, type = int,
-        help = 'set maximum number of retries'
-    )
-    parser.add_argument(
-        '-i', metavar = 'interval', dest = 'interval',
-        default = 1, type = float,
-        help = 'set interval for feed requests'
-    )
-    parser.add_argument(
-        '-c', metavar = 'cookie', dest = 'cookie',
-        help = 'set cookie if needed'
-    )
-    parser.add_argument(
-        '-b', metavar = 'boundary', dest = 'boundary',
-        default = ':',
-        help = 'focus on weibos in the id range'
-    )
-    parser.add_argument(
-        '-R', metavar = 'resource', dest = 'resource',
-        help = 'use dumped resource'
-    )
-    parser.add_argument(
-        '-n', metavar = 'name', dest = 'name', default = '{name}',
-        help = 'customize naming format'
-    )
-    parser.add_argument(
-        '-v', dest = 'video', action = 'store_true',
-        help = 'download videos together'
-    )
-    parser.add_argument(
-        '-o', dest = 'overwrite', action = 'store_true',
-        help = 'overwrite existing files'
-    )
     main()
