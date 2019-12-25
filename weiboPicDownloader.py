@@ -215,6 +215,8 @@ def get_resources(uid, video, interval, limit):
     exceed = False
     resources = []
 
+    newest_bid = ''
+
     while empty < aware and not exceed:
         try:
             url = 'https://m.weibo.cn/api/container/getIndex?count={}&page={}&containerid=107603{}'.format(size, page, uid)
@@ -239,6 +241,8 @@ def get_resources(uid, video, interval, limit):
                     if mid < limit[0] and not ('isTop' in mblog.keys() and mblog['isTop']):
                         exceed = True
                     if mid < limit[0] or mid > limit[1]: continue
+                    if not newest_bid and not ('isTop' in mblog.keys() and mblog['isTop']):
+                        newest_bid = mblog['bid']
                     if 'pics' in mblog:
                         for index, pic in enumerate(mblog['pics'], 1):
                             if 'large' in pic:
@@ -257,7 +261,7 @@ def get_resources(uid, video, interval, limit):
     print_fit('\npractically scan {} weibos, get {} {}'.format(amount, len(resources), 'resources' if video else 'pictures'))
     # with open(f"json_backup/{uid}.json", "w", encoding='utf-8') as f1:
     #     json.dump(resources, f1, indent=2, default=json_serial)
-    return resources
+    return resources, newest_bid
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -367,14 +371,13 @@ def main(*paras):
                 resources = json.load(f)
         else:
             try:
-                resources = get_resources(uid, args.video, args.interval, boundary)
+                resources, newest_bid = get_resources(uid, args.video, args.interval, boundary)
             except KeyboardInterrupt:
                 quit()
 
         # quit()
         album = os.path.join(base, nickname)
         if resources and not os.path.exists(album): make_dir(album)
-        if resources: newest_bid = resources[0]['bid']
         retry = 0
         while resources and retry <= args.retry:
             
