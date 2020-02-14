@@ -169,7 +169,7 @@ def read_from_file(path):
     except Exception as e:
         quit(str(e))
 
-def nickname_to_uid(nickname):
+def nickname_to_uid(nickname, token):
     url = 'https://m.weibo.cn/n/{}'.format(nickname)
     response = request_fit('GET', url, cookie = token)
     if re.search(r'/u/\d{10}$', response.url):
@@ -177,7 +177,7 @@ def nickname_to_uid(nickname):
     else:
         return
 
-def uid_to_nickname(uid):
+def uid_to_nickname(uid, token):
     url = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={}'.format(uid)
     response = request_fit('GET', url, cookie = token)
     try:
@@ -243,8 +243,18 @@ def get_resources(uid, video, interval, limit):
                     if mid < limit[0] or mid > limit[1]: continue
                     if not newest_bid and not ('isTop' in mblog.keys() and mblog['isTop']):
                         newest_bid = mblog['bid']
-                    if 'pics' in mblog:
-                        for index, pic in enumerate(mblog['pics'], 1):
+                    elif 'pics' in mblog:
+                        if mblog['pic_num'] > 9:  # More than 9 images
+                          
+                            blog_url = card['scheme']
+                            print(f'Find more than 9 pictures for {blog_url}!')
+                            with requests.get(blog_url) as r:
+                                a = re.search(r'var \$render_data = \[(.+)\]\[0\] \|\| {};', r.text, flags=re.DOTALL)[1]
+                                my_json = json.loads(a)
+                                pics = my_json['status']['pics']
+                        else:
+                            pics = mblog['pics']
+                        for index, pic in enumerate(pics, 1):
                             if 'large' in pic:
                                 resources.append(merge({'url': pic['large']['url'], 'index': index, 'type': 'photo'}, mark))
                     elif 'page_info' in mblog and video:
@@ -353,11 +363,11 @@ def main(*paras):
         print_fit('{}/{} {}'.format(number, len(users), time.ctime()))
         
         if re.search(r'^\d{10}$', user):
-            nickname = uid_to_nickname(user)
+            nickname = uid_to_nickname(user, token)
             uid = user
         else:
             nickname = user
-            uid = nickname_to_uid(user)
+            uid = nickname_to_uid(user, token)
 
         if not nickname or not uid:
             print_fit('invalid account {}'.format(user))
