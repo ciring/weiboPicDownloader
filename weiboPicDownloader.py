@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import reduce
-import sys, locale, platform
+import sys, platform
 import time, os, json, re, datetime, math, operator
 import concurrent.futures
 import requests
@@ -19,9 +19,6 @@ try:
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 except:
     pass
-
-token = None
-args = None
 
 parser = argparse.ArgumentParser(
     prog = 'weiboPicDownloader'
@@ -101,16 +98,13 @@ def nargs_fit(parser, args):
     return args
 
 def print_fit(string, pin = False):
-
     if pin == True:
+        
         sys.stdout.write('\r\033[K')
         sys.stdout.write(string)
         sys.stdout.flush()
     else:
         sys.stdout.write(string + '\n')
-
-def input_fit(string = ''):
-    return input(string)
 
 def merge(*dicts):
     result = {}
@@ -129,7 +123,7 @@ def make_dir(path):
 
 def confirm(message):
     while True:
-        answer = input_fit('{} [Y/n] '.format(message)).strip()
+        answer = input('{} [Y/n] '.format(message)).strip()
         if answer == 'y' or answer == 'Y':
             return True
         elif answer == 'n' or answer == 'N':
