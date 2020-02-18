@@ -8,15 +8,6 @@ import requests
 import argparse
 
 
-try:
-    reload(sys)
-    sys.setdefaultencoding('utf8')
-except:
-    pass
-
-is_python2 = sys.version[0] == '2'
-system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
-
 if platform.system() == 'Windows':
     if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
         os.system('')
@@ -110,8 +101,7 @@ def nargs_fit(parser, args):
     return args
 
 def print_fit(string, pin = False):
-    if is_python2:
-        string = string.encode(system_encoding)
+
     if pin == True:
         sys.stdout.write('\r\033[K')
         sys.stdout.write(string)
@@ -120,10 +110,7 @@ def print_fit(string, pin = False):
         sys.stdout.write(string + '\n')
 
 def input_fit(string = ''):
-    if is_python2:
-        return raw_input(string.encode(system_encoding)).decode(system_encoding)
-    else:
-        return input(string)
+    return input(string)
 
 def merge(*dicts):
     result = {}
@@ -165,7 +152,7 @@ def request_fit(method, url, max_retry = 0, cookie = None, stream = False):
 def read_from_file(path):
     try:
         with open(path, 'r') as f:
-            return [line.strip().decode(system_encoding) if is_python2 else line.strip() for line in f]
+            return [line.strip() for line in f]
     except Exception as e:
         quit(str(e))
 
@@ -326,7 +313,7 @@ def main(*paras):
         args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
         
     if args.users:
-        users = [user.decode(system_encoding) for user in args.users] if is_python2 else args.users
+        users = args.users
     elif args.files:
         users = [read_from_file(path.strip()) for path in args.files]
         users = reduce(lambda x, y : x + y, users)
