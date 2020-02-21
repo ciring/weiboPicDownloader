@@ -99,12 +99,9 @@ def nargs_fit(parser, args):
 
 def print_fit(string, pin = False):
     if pin == True:
-        
-        sys.stdout.write('\r\033[K')
-        sys.stdout.write(string)
-        sys.stdout.flush()
+        print(f'\r{string}', end='', flush=True)        
     else:
-        sys.stdout.write(string + '\n')
+        print(string)
 
 def merge(*dicts):
     result = {}
@@ -186,7 +183,7 @@ def parse_date(text):
     elif re.search(r'^[\d|-]+$', text):
         return datetime.datetime.strptime(((str(now.year) + '-') if not re.search(r'^\d{4}', text) else '') + text, '%Y-%m-%d').date()
 
-def get_resources(uid, video, interval, limit):
+def get_resources(uid, video, interval, limit, token):
     page = 1
     size = 25
     amount = 0
@@ -362,7 +359,7 @@ def main(*paras):
                 resources = json.load(f)
         else:
             try:
-                resources, newest_bid = get_resources(uid, args.video, args.interval, boundary)
+                resources, newest_bid = get_resources(uid, args.video, args.interval, boundary, token)
             except KeyboardInterrupt:
                 quit()
 
