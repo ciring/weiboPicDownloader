@@ -99,7 +99,8 @@ def nargs_fit(parser, args):
 
 def print_fit(string, pin = False):
     if pin == True:
-        print(f'\r{string}', end='', flush=True)        
+        sys.stdout.write("\033[K")
+        print(f'\r{string}', end='', flush=True)
     else:
         print(string)
 
