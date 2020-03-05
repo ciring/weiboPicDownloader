@@ -97,9 +97,9 @@ def nargs_fit(parser, args):
                 args[index] = ' ' + args[index]
     return args
 
-def print_fit(string, pin = False):
-    if pin == True:
-        sys.stdout.write("\033[K")
+def print_fit(string, pin=False):
+    sys.stdout.write("\033[K")
+    if pin == True:        
         print(f'\r{string}', end='', flush=True)
     else:
         print(string)
@@ -228,7 +228,7 @@ def get_resources(uid, video, interval, limit, token):
                     if 'isTop' in mblog and mblog['isTop']: continue
                     mid = int(mblog['mid'])
                     date = parse_date(mblog['created_at'])
-                    mark = {'mid': mid, 'bid': mblog['bid'], 'date': date, 'text': mblog['text']}
+                    mark = {'uid': uid, 'mid': mid, 'bid': mblog['bid'], 'date': date, 'text': mblog['text']}
                     amount += 1
                     if compare(limit[0], '>', [mid, date]): exceed = True
                     if compare(limit[0], '>', [mid, date]) or compare(limit[1], '<', [mid, date]): continue
