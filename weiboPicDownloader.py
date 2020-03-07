@@ -232,8 +232,8 @@ def get_resources(uid, video, interval, limit, token):
                     amount += 1
                     if compare(limit[0], '>', [mid, date]): exceed = True
                     if compare(limit[0], '>', [mid, date]) or compare(limit[1], '<', [mid, date]): continue
-                    if not newest_bid and not ('isTop' in mblog.keys() and mblog['isTop']):
-                        newest_bid = mblog['bid']                    
+                    if not newest_bid: #Save newest bid
+                        newest_bid = mblog['bid']
                     if 'pics' in mblog:
                         if mblog['pic_num'] > 9:  # More than 9 images
                           
