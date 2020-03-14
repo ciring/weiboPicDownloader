@@ -97,12 +97,11 @@ def nargs_fit(parser, args):
                 args[index] = ' ' + args[index]
     return args
 
-def print_fit(string, pin=False):
-    sys.stdout.write("\033[K")
-    if pin == True:        
-        print(f'\r{string}', end='', flush=True)
+def print_fit(string, pin=False):    
+    if pin == True:
+        print(f'\r\033[K{string}', end='')
     else:
-        print(string)
+        print(f'\n{string}', end='')
 
 def merge(*dicts):
     result = {}
@@ -238,7 +237,7 @@ def get_resources(uid, video, interval, limit, token):
                         if mblog['pic_num'] > 9:  # More than 9 images
                           
                             blog_url = card['scheme']
-                            print(f'Find more than 9 pictures for {blog_url}!')
+                            print_fit(f'Find more than 9 pictures for {blog_url}!')
                             with requests.get(blog_url) as r:
                                 a = re.search(r'var \$render_data = \[(.+)\]\[0\] \|\| {};', r.text, flags=re.DOTALL)[1]
                                 my_json = json.loads(a)
