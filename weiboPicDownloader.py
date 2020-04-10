@@ -97,11 +97,21 @@ def nargs_fit(parser, args):
                 args[index] = ' ' + args[index]
     return args
 
-def print_fit(string, pin=False):    
-    if pin == True:
-        print(f'\r\033[K{string}', end='')
-    else:
-        print(f'\n{string}', end='')
+class printer():
+    def __init__(self):
+        self.pinned = False
+
+    def print_fit(self, string, pin=False):
+        if pin == True:            
+            print(f'\r\033[K{string}', end='')
+            self.pinned = True
+        else:
+            if self.pinned:
+                print()
+            print(string)
+            self.pinned = False
+
+print_fit = printer().print_fit
 
 def merge(*dicts):
     result = {}
@@ -258,7 +268,7 @@ def get_resources(uid, video, interval, limit, token):
         finally:
             time.sleep(interval)
 
-    print_fit('\npractically scan {} weibos, get {} {}'.format(amount, len(resources), 'resources' if video else 'pictures'))
+    print_fit('Practically scanned {} weibos, get {} {}'.format(amount, len(resources), 'resources' if video else 'pictures'))
     # with open(f"json_backup/{uid}.json", "w", encoding='utf-8') as f1:
     #     json.dump(resources, f1, indent=2, default=json_serial)
     return resources, newest_bid
