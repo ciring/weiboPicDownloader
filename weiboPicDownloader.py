@@ -239,10 +239,10 @@ def get_resources(uid, video, interval, limit, token):
                     date = parse_date(mblog['created_at'])
                     mark = {'uid': uid, 'mid': mid, 'bid': mblog['bid'], 'date': date, 'text': mblog['text']}
                     amount += 1
-                    if compare(limit[0], '>', [mid, date]): exceed = True
-                    if compare(limit[0], '>', [mid, date]) or compare(limit[1], '<', [mid, date]): continue
                     if not newest_bid: #Save newest bid
-                        newest_bid = mblog['bid']
+                        newest_bid = mblog['bid']              
+                    if compare(limit[0], '>=', [mid, date]): exceed = True
+                    if compare(limit[0], '>=', [mid, date]) or compare(limit[1], '<', [mid, date]): continue
                     if 'pics' in mblog:
                         if mblog['pic_num'] > 9:  # More than 9 images
                           
@@ -435,7 +435,7 @@ def main(*paras):
         for resource in resources: print_fit('{} failed'.format(resource['url']))
         print_fit('-' * 30)
     print_fit('Done!')
-    return(nickname, newest_bid)
+    return(nickname, uid, newest_bid)
 
 
 if __name__ == "__main__":
