@@ -298,7 +298,13 @@ def format_name(item, template):
         elif key[0] == 'index':
             return str(item[key[0]]).zfill(int(key[1] if len(key) > 1 else '0'))
         elif key[0] == 'text':
-            return re.sub(r'<.*?>', '', item[key[0]]).strip()[:100]
+            value = item[key[0]]
+            value = value.replace(r'<br />', ' ') # Replace newline with space
+            value = re.sub(r'<.*?>', '', value) # Remove other HTML tags.
+            value = value.replace('無断転載禁止', '')
+            value = re.sub(r'\s+', ' ', value)
+            value = value.strip()[:100]
+            return value
         else:
             return str(item[key[0]])
   
