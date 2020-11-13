@@ -6,7 +6,7 @@ import time, os, json, re, datetime, math, operator
 import concurrent.futures
 import requests
 import argparse
-
+from pathlib import Path
 
 if platform.system() == 'Windows':
     if operator.ge(*map(lambda version: list(map(int, version.split('.'))), [platform.version(), '10.0.14393'])):
@@ -43,7 +43,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '-r', metavar = 'retry', dest = 'retry',
-    default = 2, type = int,
+    default = 5, type = int,
     help = 'set maximum number of retries'
 )
 parser.add_argument(
@@ -183,12 +183,12 @@ def bid_to_mid(string):
 
 def parse_date(text):
     now = datetime.datetime.now()
-    if u'前' in text:
-        if u'小时' in text:
+    if '前' in text:
+        if '小时' in text:
             return (now - datetime.timedelta(hours = int(re.search(r'\d+', text).group()))).date()
         else:
             return now.date()
-    elif u'昨天' in text:
+    elif '昨天' in text:
         return now.date() - datetime.timedelta(days = 1)
     elif re.search(r'^[\d|-]+$', text):
         return datetime.datetime.strptime(((str(now.year) + '-') if not re.search(r'^\d{4}', text) else '') + text, '%Y-%m-%d').date()
@@ -237,7 +237,7 @@ def get_resources(uid, video, interval, limit, token):
                     if 'isTop' in mblog and mblog['isTop']: continue
                     mid = int(mblog['mid'])
                     date = parse_date(mblog['created_at'])
-                    mark = {'uid': uid, 'mid': mid, 'bid': mblog['bid'], 'date': date, 'text': mblog['text']}
+                    mark = {'uid': uid, 'mid': mid, 'bid': mblog['bid'], 'date': date, 'text': mblog['raw_text']}
                     amount += 1
                     if not newest_bid: #Save newest bid
                         newest_bid = mblog['bid']              
@@ -263,7 +263,7 @@ def get_resources(uid, video, interval, limit, token):
                             streams = [media_info[key] for key in ['mp4_720p_mp4', 'mp4_hd_url', 'mp4_sd_url', 'stream_url'] if key in media_info and media_info[key]]
                             if streams:
                                 resources.append(merge({'url': streams.pop(0), 'type': 'video'}, mark))
-            print_fit('{} {}(#{})'.format('analysing weibos...' if empty < aware and not exceed else 'finish analysis', progress(amount, total), page), pin = True)
+            print_fit('{} {}(#{})'.format('Analysing weibos...' if empty < aware and not exceed else 'finish analysis', progress(amount, total), page), pin = True)
             page += 1
         finally:
             time.sleep(interval)
@@ -299,9 +299,11 @@ def format_name(item, template):
             return str(item[key[0]]).zfill(int(key[1] if len(key) > 1 else '0'))
         elif key[0] == 'text':
             value = item[key[0]]
-            value = value.replace(r'<br />', ' ') # Replace newline with space
-            value = re.sub(r'<.*?>', '', value) # Remove other HTML tags.
+            value = value.replace('<br />', ' ') # Replace newline with space
+            # value = re.sub(r'<.*?>', '', value) # Remove other HTML tags.
             value = value.replace('無断転載禁止', '')
+            value = value.replace('\u200b', '')
+            value = re.sub(r'#(.+?)(\[?超话\]?)?#', r' \1 ', value)
             value = re.sub(r'\s+', ' ', value)
             value = value.strip()[:100]
             return value
@@ -311,15 +313,27 @@ def format_name(item, template):
     return safeify(re.sub(r'{(.*?)}', substitute, template))
 
 def download(url, path, overwrite):
-    if os.path.exists(path) and not overwrite: return True
+    path = Path(path)
+    if path.exists() and not overwrite: return True
     try:
-        response = request_fit('GET', url, stream = True)
-        with open(path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size = 512):
-                if chunk:
-                    f.write(chunk)
-    except Exception:
-        if os.path.exists(path): os.remove(path)
+        with request_fit('GET', url, stream = True) as response:
+            expected_size = int(response.headers['Content-length'])
+            with open(path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        size = path.stat().st_size
+        if size != expected_size:
+            raise Exception(f'{path.name.split(" ")[-1]}: filesize doesn\'t match header ({expected_size} -> {size}). Re-download...')            
+    except Exception as ex:
+        print_fit(ex)
+        if path.exists():
+            i = 1
+            path_temp = path.with_name(f'[broken {i}]' + path.name)
+            while path_temp.exists(): 
+                i += 1
+                path_temp = path.with_name(f'[broken {i}]' + path.name)
+            path.rename(path_temp)
         return False
     else:
         return True
@@ -357,6 +371,11 @@ def main(*paras):
     try:
         boundary[0] = 0 if boundary[0] == '' else parse_point(boundary[0])
         boundary[1] = float('inf') if boundary[1] == '' else parse_point(boundary[1])
+        if boundary[0] == boundary[1]:
+            if type(boundary[0]) == int:
+                boundary[0] = boundary[0] - 1
+            else:
+                boundary[0] = boundary[0] - datetime.timedelta(days = 1)
         if type(boundary[0]) == type(boundary[1]): assert boundary[0] <= boundary[1]
     except:
         quit('invalid id range {}'.format(args.boundary))
@@ -377,7 +396,7 @@ def main(*paras):
             uid = nickname_to_uid(user, token)
 
         if not nickname or not uid:
-            print_fit('invalid account {}'.format(user))
+            print_fit('Invalid account {}'.format(user))
             print_fit('-' * 30)
             continue
 
@@ -398,7 +417,7 @@ def main(*paras):
         retry = 0
         while resources and retry <= args.retry:
             
-            if retry > 0: print_fit('automatic retry {}'.format(retry))
+            if retry > 0: print_fit('Automatic retry {}'.format(retry))
 
             total = len(resources)
             tasks = []
@@ -417,7 +436,7 @@ def main(*paras):
                         if task.done() == True:
                             done += 1
                             if task.cancelled(): continue
-                            elif task.result() == False: failed[index] = ''
+                            if task.result() == False: failed[index] = ''
                         elif cancel:
                             if not task.cancelled(): task.cancel()
                     time.sleep(0.5)
@@ -426,14 +445,14 @@ def main(*paras):
                 finally:
                     if not cancel:
                         print_fit('{} {}'.format(
-                            'downloading...' if done != total else 'all tasks done',
+                            'Downloading...' if done != total else 'All tasks done',
                             progress(done, total, True)
                         ), pin = True)
                     else:
                         print_fit('waiting for cancellation... ({})'.format(total - done), pin = True) 
 
             if cancel: quit()
-            print_fit('\nsuccess {}, failure {}, total {}'.format(total - len(failed), len(failed), total))
+            print_fit('Success {}, failure {}, total {}'.format(total - len(failed), len(failed), total))
 
             resources = [resources[index] for index in failed]
             retry += 1
