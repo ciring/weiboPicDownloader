@@ -11,8 +11,11 @@ for more weibo free login APIs, turn to [wiki](https://github.com/nondanee/weibo
 **[weibo_follow README](README-wf.md)**
 
 引用https://github.com/fireattack/weiboPicDownloader
+
 和https://github.com/dataabc/weibo-follow
+
 修改weiboPicDownloader.py read_from_file函数
+
 方便直接使用weibo-follow爬取的user_id_list.txt文件
 
 
