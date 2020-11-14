@@ -152,8 +152,12 @@ def request_fit(method, url, max_retry = 0, cookie = None, stream = False):
 
 def read_from_file(path):
     try:
-        with open(path, 'r') as f:
-            return [line.strip() for line in f]
+        with open(path, 'r', encoding='gb18030', errors='ignore') as f:
+            empty = []
+            str = [line.strip() for line in f]
+            for uncode in str:
+                empty.append(uncode[0:10])
+            return empty
     except Exception as e:
         quit(str(e))
 
